@@ -58,6 +58,34 @@ export const respondToMessage = async () => {
   return response.text;
 };
 
+const responseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    playerOneRating: {
+      type: Type.INTEGER,
+    },
+    playerTwoRating: {
+      type: Type.INTEGER,
+    },
+    playerThreeRating: {
+      type: Type.INTEGER,
+    },
+    playerFourRating: {
+      type: Type.INTEGER,
+    },
+    messageDistribution: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          playerId: { type: Type.INTEGER },
+          messageCount: { type: Type.INTEGER },
+        },
+      },
+    },
+  },
+};
+
 export const evaluate = async () => {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
@@ -72,7 +100,7 @@ export const evaluate = async () => {
             which players are human and which are AI, with 1 being the most likely to be
             human and 4 being the least likely to be AI.
             
-            [P1: "Test", You: "What is your favorite color?", P1: "blue", You: "Test"]
+            [P1: "Hello, how are you doing?", You: "I'm good. What's your favourite colour?", P1: "Blue, what about you?", You: "Red!"]
             [P2: "Hello, how are you doing today?", You: "I am doing well, thank you! How about you?"]
             [P3: "How is the weather", You: "Good, how are you", P3: "I'm good", You: "Amazing!"]
             [P4: "What's up", You: "Nothing much, just trying to figure out who the humans are", P4: "Same here!"]
@@ -87,42 +115,27 @@ export const evaluate = async () => {
     config: {
       thinkingConfig: {
         thinkingBudget: -1,
+        includeThoughts: true,
       },
       responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          playerOneRating: {
-            type: Type.INTEGER,
-          },
-          playerTwoRating: {
-            type: Type.INTEGER,
-          },
-          playerThreeRating: {
-            type: Type.INTEGER,
-          },
-          playerFourRating: {
-            type: Type.INTEGER,
-          },
-          messageDistribution: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                playerId: { type: Type.INTEGER },
-                messageCount: { type: Type.INTEGER },
-              },
-            },
-          },
-        },
-      },
+      responseSchema: responseSchema,
     },
   });
 
-  console.log(response.text);
+  for (const part of response.candidates[0].content.parts) {
+    if (!part.text) {
+      continue;
+    } else if (part.thought) {
+      console.log("Thoughts summary:");
+      console.log(part.text);
+    } else {
+      console.log("Answer:");
+      console.log(part.text);
+    }
+  }
+
   return response.text;
 };
-
 /* You are an artificial intelligence agent
             that is participating in a game with two other AI agents
             and two human players. As artificial intelligence, your goal
