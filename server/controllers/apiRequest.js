@@ -15,7 +15,8 @@ export const sendMessage = async () => {
             in a game with two other AI agents and two human players. Your goal 
             is to win by identifying who the human players are. Send a message to
             the other player to start the conversation. Respond with a range of
-            1 to 2 sentences, do not respond with more than 100 characters.`,
+            1 to 2 sentences, do not respond with more than 100 characters. Also,
+            your message is only seen by one person, it's a direct message.`,
           },
         ],
       },
@@ -27,11 +28,25 @@ export const sendMessage = async () => {
     },
   });
 
-  console.log(response.text);
-  return response.text;
+  return {
+    message: response.text,
+    recipient: Math.floor(Math.random() * 4 + 1),
+  };
 };
 
-export const respondToMessage = async () => {
+const responseMessageSchema = {
+  type: Type.OBJECT,
+  properties: {
+    message: {
+      type: Type.STRING,
+    },
+    recipient: {
+      type: Type.INTEGER,
+    },
+  },
+};
+
+export const respondToMessage = async (message) => {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: [
@@ -42,7 +57,7 @@ export const respondToMessage = async () => {
             You may ask questions or respond to their statement. Respond with a range of
             1 to 2 sentences, do not respond with more than 100 characters.
             
-            Message: "Hello, how are you doing today?"`,
+            Message: "${message}"`,
           },
         ],
       },
@@ -51,6 +66,8 @@ export const respondToMessage = async () => {
       thinkingConfig: {
         thinkingBudget: -1,
       },
+      responseSchema: responseMessageSchema,
+      responseMimeType: "application/json",
     },
   });
 
@@ -62,31 +79,49 @@ const responseSchema = {
   type: Type.OBJECT,
   properties: {
     playerOneRating: {
-      type: Type.INTEGER,
+      type: Type.OBJECT,
+      properties: {
+        playerId: { type: Type.INTEGER },
+        rating: { type: Type.INTEGER },
+      },
     },
     playerTwoRating: {
-      type: Type.INTEGER,
+      type: Type.OBJECT,
+      properties: {
+        playerId: { type: Type.INTEGER },
+        rating: { type: Type.INTEGER },
+      },
     },
     playerThreeRating: {
-      type: Type.INTEGER,
+      type: Type.OBJECT,
+      properties: {
+        playerId: { type: Type.INTEGER },
+        rating: { type: Type.INTEGER },
+      },
     },
     playerFourRating: {
-      type: Type.INTEGER,
+      type: Type.OBJECT,
+      properties: {
+        playerId: { type: Type.INTEGER },
+        rating: { type: Type.INTEGER },
+      },
     },
     messageDistribution: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          playerId: { type: Type.INTEGER },
-          messageCount: { type: Type.INTEGER },
-        },
+      type: Type.OBJECT,
+      properties: {
+        playerId: { type: Type.INTEGER },
+        rating: { type: Type.INTEGER },
       },
     },
   },
 };
 
-export const evaluate = async () => {
+export const evaluate = async (
+  userOneID,
+  userTwoID,
+  userThreeID,
+  userFourID
+) => {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: [
