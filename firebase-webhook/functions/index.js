@@ -7,9 +7,33 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
+const { setGlobalOptions } = require("firebase-functions");
+const { onRequest } = require("firebase-functions/https");
 const logger = require("firebase-functions/logger");
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const axios = require("axios");
+
+admin.initializeApp();
+
+exports.databaseTrigger = functions.database
+  .ref("/path/to/data")
+  .onUpdate((change, context) => {
+    const updatedData = change.after.val();
+    console.log("Updated data:", updatedData);
+
+    // Call your local webhook endpoint
+    return axios
+      .post("http://localhost:3000/db-update", updatedData)
+      .then((response) => {
+        console.log("Webhook called successfully:", response.data);
+        return null;
+      })
+      .catch((error) => {
+        console.error("Error calling webhook:", error);
+        throw new Error("Error calling webhook");
+      });
+  });
 
 // For cost control, you can set the maximum number of containers that can be
 // running at the same time. This helps mitigate the impact of unexpected
