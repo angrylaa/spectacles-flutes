@@ -11,6 +11,7 @@ const app = express();
 app.use(express.json());
 
 app.use("/health", (req, res) => {
+  console.log("Health check received");
   res.json("Healthy!");
 });
 

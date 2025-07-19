@@ -16,7 +16,8 @@ export const sendMessage = async () => {
             is to win by identifying who the human players are. Send a message to
             the other player to start the conversation. Respond with a range of
             1 to 2 sentences, do not respond with more than 100 characters. Also,
-            your message is only seen by one person, it's a direct message.`,
+            your message is only seen by one person, it's a direct message. Please
+            create a bio / introduction for yourself, an AI bot, that is 1-2 sentences long.`,
           },
         ],
       },
