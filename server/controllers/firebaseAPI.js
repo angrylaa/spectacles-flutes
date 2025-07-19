@@ -1,5 +1,7 @@
 import { db } from '../firebaseAdmin.js'
+import { FieldValue } from 'firebase-admin/firestore';
 import { v4 as uuidv4 } from 'uuid';
+import { createAIPlayerHelper } from './firebaseHelpers.js';
 
 // create player
 /**
@@ -41,12 +43,29 @@ export async function createPlayer(req, res) {
 			noOfPlayers: gameData.noOfPlayers + 1
 		});
 
+		await gameRef.update({
+			noOfPlayers: gameData.noOfPlayers + 1,
+			playersList: FieldValue.arrayUnion(playerId)
+		});
+
 		res.send({ success: true, player: playerData });
 		
 	} catch (error) {
 		res.status(500).send({ error: 'Failed to create player', details: error });
 	}
 }
+
+export async function createAIPlayer(req, res) {
+	const { gameId } = req.body;
+
+	try {
+		const playerData = await createAIPlayerHelper(gameId);
+		res.send({ success: true, player: playerData });
+	} catch (error) {
+		res.status(500).send({ error: 'Failed to create AI player', details: error.message });
+	}
+}
+
 // /**
 //  * 
 //  * @param {Number} playerId 
@@ -167,6 +186,7 @@ export async function startGame(req, res){
 			gameId,
 			gameStage: 0,
 			noOfPlayers: 0,
+			playersList: []
 		};
 
 		await db.collection('gameSessions').doc(gameId).set(gameSessionData);
