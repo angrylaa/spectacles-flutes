@@ -4,6 +4,7 @@ import sendMessageRoute from "./routes/chatPhase.js";
 import playerRoutes from './routes/playersRoute.js';
 import gameSessionRoute from './routes/gameSessionRoute.js';
 import messageRoute from './routes/messageRoute.js'; 
+import gameStartRoute from "./routes/startGame.js";
 
 const port = 3000;
 const app = express();
@@ -18,6 +19,7 @@ app.use("/send-message", sendMessageRoute);
 app.use("/players", playerRoutes);
 app.use("/game-sessions", gameSessionRoute);
 app.use("/messages", messageRoute);
+app.use("/start-game", gameStartRoute);
 
 app.listen(port, () => {
   console.log("server is listening!");

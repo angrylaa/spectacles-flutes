@@ -1,18 +1,19 @@
-class AIAgent {
-  constructor(agentId, personality) {
+import { sendMessage } from "../controllers/apiRequest.js";
+
+export default class AIAgent {
+  constructor(agentId) {
     this.agentId = agentId;
-    this.personality = personality;
   }
 
-  respondToMessage(message) {
-    console.log(`Agent ${this.agentId} responds to message:`, message);
+  async respondToMessage(message) {
+    await delay(Math.random() * 2000);
+    const response = await respondToMessage(message);
   }
 
-  sendMessage(recipient, message) {
-    console.log(
-      `Agent ${this.agentId} is sending message to ${recipient}:`,
-      message
-    );
+  async sendMessage() {
+    const response = await sendMessage();
+    console.log(response);
+    return response;
   }
 
   setBio(bio) {
