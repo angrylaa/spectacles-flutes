@@ -3,7 +3,7 @@ import { sendMessage } from "../controllers/apiRequest.js";
 
 const router = express.Router();
 
-router.get("/message-received", async (req, res) => {
+router.post("/message-received", async (req, res) => {
   try {
     // when db gets updated,
     const response = await sendMessage();
