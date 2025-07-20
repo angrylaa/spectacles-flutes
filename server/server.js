@@ -1,10 +1,13 @@
 import "dotenv/config";
 import express from "express";
-import chatPhaseRoute from "./routes/chatPhase.js";
+// import chatPhaseRoute from "./routes/chatPhase.js";
 import gameSessionRoute from "./routes/gameSessionRoute.js";
-import messageRoute from "./routes/messageRoute.js";
-import playerRoutes from "./routes/playersRoute.js";
-import gameStartRoute from "./routes/startGame.js";
+// import messageRoute from "./routes/messageRoute.js";
+// import playerRoutes from "./routes/playersRoute.js";
+import { checkAndProcessResponses } from "./services/polling.js";
+
+// Start polling when server starts
+checkAndProcessResponses();
 
 const port = 3000;
 const app = express();
@@ -15,11 +18,10 @@ app.use("/health", (req, res) => {
   res.json("Healthy!");
 });
 
-app.use("/players", playerRoutes);
+// app.use("/players", playerRoutes);
 app.use("/game-sessions", gameSessionRoute);
-app.use("/messages", messageRoute);
-app.use("/start-game", gameStartRoute);
-app.use("/chat-phase", chatPhaseRoute);
+// app.use("/messages", messageRoute);
+// app.use("/start-game", gameStartRoute);
 
 app.listen(port, () => {
   console.log("server is listening!");

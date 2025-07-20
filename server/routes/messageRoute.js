@@ -1,13 +1,12 @@
-import express from 'express';
-import { postCreateMessage, getMessagesFromPlayer } from '../controllers/firebaseAPI.js';
+// import { postCreateMessage, getMessagesFromPlayer } from '../controllers/firebaseAPI.js';
 
-const router = express.Router();
+// const router = express.Router();
 
-// POST 
-router.post('/', postCreateMessage);
+// // POST
+// router.post('/', postCreateMessage);
 
-// GET 
-// get all messages targetPlayerId has recieved from senderPlayerId
-router.get('/:targetPlayerId/from/:senderPlayerId', getMessagesFromPlayer);
+// // GET
+// // get all messages targetPlayerId has recieved from senderPlayerId
+// router.get('/:targetPlayerId/from/:senderPlayerId', getMessagesFromPlayer);
 
-export default router;
+// export default router;
