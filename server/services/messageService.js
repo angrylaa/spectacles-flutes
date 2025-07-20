@@ -106,45 +106,73 @@ export async function updateMessageReadStatus(messageId) {
 
 export async function deleteAllMessagesExceptOne() {
   try {
-    // Get all messages sorted by timestamp
+    // Delete messages
     const messages = await db
       .collection("messages")
       .orderBy("timestamp", "desc")
       .get();
 
-    if (messages.empty) {
-      return {
-        success: true,
-        deletedCount: 0,
-        message: "No messages to delete",
-      };
-    }
+    // Delete players
+    const players = await db
+      .collection("players")
+      .orderBy("messageCount", "desc")
+      .get();
 
-    // Create a batch for bulk deletion
+    // Delete sessions
+    const sessions = await db
+      .collection("gameSessions")
+      .orderBy("gameStage", "desc")
+      .get();
+
     const batch = db.batch();
-    let deletedCount = 0;
-    let isFirstMessage = true;
+    const counts = {
+      messages: 0,
+      players: 0,
+      sessions: 0,
+    };
 
+    // Process messages
+    let isFirst = true;
     messages.docs.forEach((doc) => {
-      // Skip the first (most recent) message
-      if (isFirstMessage) {
-        isFirstMessage = false;
+      if (isFirst) {
+        isFirst = false;
         return;
       }
-
       batch.delete(doc.ref);
-      deletedCount++;
+      counts.messages++;
     });
 
-    // Commit the batch deletion
+    // Process players
+    isFirst = true;
+    players.docs.forEach((doc) => {
+      if (isFirst) {
+        isFirst = false;
+        return;
+      }
+      batch.delete(doc.ref);
+      counts.players++;
+    });
+
+    // Process sessions
+    isFirst = true;
+    sessions.docs.forEach((doc) => {
+      if (isFirst) {
+        isFirst = false;
+        return;
+      }
+      batch.delete(doc.ref);
+      counts.sessions++;
+    });
+
+    // Commit all deletions in one batch
     await batch.commit();
 
     return {
       success: true,
-      deletedCount,
-      message: `Deleted ${deletedCount} messages, kept 1 message`,
+      deletedCounts: counts,
+      message: `Deleted ${counts.messages} messages, ${counts.players} players, ${counts.sessions} sessions. Kept 1 of each.`,
     };
   } catch (error) {
-    throw new Error(`Failed to delete messages: ${error.message}`);
+    throw new Error(`Failed to delete collections: ${error.message}`);
   }
 }
