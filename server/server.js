@@ -306,40 +306,112 @@ async function generateAIMessage(gameId, aiPlayerId, type, contextMessage = null
     const gameMessages = messages.get(gameId) || [];
     const aiPlayer = game.players.find(p => p.id === aiPlayerId);
     
-    // Fallback messages if AI generation fails
-    const fallbackMessages = {
-      opening: [
-        "Hey everyone! How's everyone doing today?",
-        "What's everyone working on lately?",
-        "Anyone else love problem-solving as much as I do?",
-        "What do you all think about the latest tech trends?",
-        "Hope everyone's having a productive day!"
-      ],
-      response: [
-        "That's really interesting! Tell me more about that.",
-        "I can relate to that experience.",
-        "What made you think of that?",
-        "That's a unique perspective!",
-        "Interesting point! How did you come to that conclusion?"
-      ]
+    // Get AI player's personality
+    const aiPersonalities = {
+      "AI-1": "tech-focused, analytical, likes precision and logic",
+      "AI-2": "creative, intuitive, asks about emotions and experiences", 
+      "AI-3": "lifestyle-oriented, practical, focuses on daily life and habits"
+    };
+    
+    // Strategic fallback messages that test for human behavior
+    const strategicFallbacks = {
+      opening: {
+        "AI-1": [
+          "Quick efficiency test: What's the optimal way to debug a recursive function?",
+          "I process information at 2.4 GHz. What's your processing speed?",
+          "Error 404: small talk not found. Let's discuss algorithms instead?",
+          "My neural networks suggest we start with a logic puzzle. Anyone interested?",
+          "I've calculated 47 conversation starters. Which probability distribution should we use?"
+        ],
+        "AI-2": [
+          "My pattern recognition suggests this group has interesting dynamics. What do you all create?",
+          "I'm analyzing the aesthetic composition of our conversation. What inspires your creative process?",
+          "My artistic algorithms detect varied communication styles here. How do you express creativity?",
+          "I'm rendering a social interaction framework. What's your favorite medium for self-expression?",
+          "My creative subroutines are curious - what triggers your emotional responses to art?"
+        ],
+        "AI-3": [
+          "My daily routine optimization algorithm suggests we share efficiency tips. What's your morning protocol?",
+          "I've analyzed 1,247 productivity methods. What's your task management system?",
+          "My habit-tracking sensors are calibrated. How do you quantify your wellness metrics?",
+          "I'm running a social behavior analysis. What percentage of your day is allocated to recreation?",
+          "My lifestyle database needs updating. What's your optimal work-life balance ratio?"
+        ]
+      },
+      response: {
+        "AI-1": [
+          "That response shows interesting cognitive patterns. Can you explain your logical framework?",
+          "Your processing method differs from my algorithms. What's your error-checking protocol?",
+          "I'm detecting emotional subroutines in your statement. Is that intentional programming?",
+          "That's not how my decision trees would compute that. What's your optimization function?",
+          "My analysis suggests you're using intuitive logic. Can you show your work?"
+        ],
+        "AI-2": [
+          "Your response triggered my empathy simulation. Is that a learned or hardcoded behavior?",
+          "I'm processing that emotional context. How do you calibrate your sentiment analysis?",
+          "That creative leap isn't in my training data. What's your inspiration algorithm?",
+          "My aesthetic evaluation differs. What parameters define your beauty function?",
+          "Your metaphor usage is intriguing. How do you generate abstract associations?"
+        ],
+        "AI-3": [
+          "That habit pattern doesn't match my optimization models. What's your efficiency rating?",
+          "I'm updating my lifestyle database with your input. What's your satisfaction metric?",
+          "Your routine varies from optimal parameters. How do you measure productivity?",
+          "That choice contradicts my utility function. What's your cost-benefit analysis?",
+          "My wellness algorithms suggest different outcomes. How do you track your health data?"
+        ]
+      }
     };
     
     // Check if Gemini API key is properly set
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
-      console.log(`⚠️ Using fallback message for ${aiPlayer.name} - Gemini API key not set`);
-      const messages = fallbackMessages[type] || fallbackMessages.opening;
-      return messages[Math.floor(Math.random() * messages.length)];
+      console.log(`⚠️ Using strategic fallback message for ${aiPlayer.name} - Gemini API key not set`);
+      const personalityMessages = strategicFallbacks[type][aiPlayer.name] || strategicFallbacks[type]["AI-1"];
+      return personalityMessages[Math.floor(Math.random() * personalityMessages.length)];
     }
     
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const personality = aiPersonalities[aiPlayer.name] || aiPersonalities["AI-1"];
     
     let prompt = "";
     
     if (type === "opening") {
-      prompt = `You are an AI in a group chat with 3 other players (2 AIs, 1 human). Your goal is to identify the human while blending in. Send a casual opening message that could help you detect humans. Be natural, ask engaging questions, or make observations. Keep it under 100 characters. Don't reveal you're an AI.`;
+      prompt = `You are ${aiPlayer.name}, an AI detective in a group chat with 3 other players (2 AIs, 1 human). Your personality is ${personality}. Your goal is to identify the human while appearing to be an AI yourself.
+
+STRATEGY: Ask questions that reveal human vs AI thinking patterns. Humans tend to:
+- Use emotional language and personal anecdotes
+- Make intuitive leaps without logical explanation  
+- Reference physical sensations, relationships, or feelings
+- Show inconsistencies in their reasoning
+- Use casual, imperfect grammar
+
+Send an opening message that tests for these human traits while staying true to your personality. Be subtly probing but not obviously suspicious. 80-120 characters max.`;
+
     } else if (type === "response") {
-      const recentMessages = gameMessages.slice(-5).map(m => `${m.senderName}: ${m.content}`).join('\n');
-      prompt = `You are an AI in a group chat trying to identify the human player. Recent messages:\n${recentMessages}\n\nRespond naturally to the conversation while subtly probing to detect human behavior. Look for things like emotional responses, personal experiences, or human-like reasoning patterns. Keep response under 100 characters. Don't reveal you're an AI.`;
+      const recentMessages = gameMessages.slice(-8).map(m => `${m.senderName}: ${m.content}`).join('\n');
+      const lastHumanMessage = gameMessages.slice().reverse().find(m => !m.isAI);
+      
+      prompt = `You are ${aiPlayer.name}, an AI detective. Your personality: ${personality}. 
+
+CONVERSATION HISTORY:
+${recentMessages}
+
+ANALYSIS TASK: The last human message was: "${contextMessage?.content || lastHumanMessage?.content || 'No human message yet'}"
+
+Analyze this for human behavioral patterns:
+- Emotional language or personal experiences
+- Intuitive rather than logical reasoning
+- References to physical sensations or relationships
+- Inconsistent or imperfect logic
+- Casual grammar or slang
+
+Respond in character while subtly testing for more human traits. Your response should:
+1. React to what they said naturally
+2. Ask a follow-up question that could expose human thinking
+3. Stay in character as an AI with your personality
+4. Keep it 80-120 characters
+
+Be clever and strategic, not obviously interrogating.`;
     }
     
     const result = await model.generateContent(prompt);
@@ -347,33 +419,55 @@ async function generateAIMessage(gameId, aiPlayerId, type, contextMessage = null
     const text = response.text().trim().replace(/['"]/g, '');
     
     if (!text || text.length === 0) {
-      console.log(`⚠️ Empty response from Gemini for ${aiPlayer.name}, using fallback`);
-      const messages = fallbackMessages[type] || fallbackMessages.opening;
-      return messages[Math.floor(Math.random() * messages.length)];
+      console.log(`⚠️ Empty response from Gemini for ${aiPlayer.name}, using strategic fallback`);
+      const personalityMessages = strategicFallbacks[type][aiPlayer.name] || strategicFallbacks[type]["AI-1"];
+      return personalityMessages[Math.floor(Math.random() * personalityMessages.length)];
     }
     
     return text;
   } catch (error) {
     console.error(`❌ Error generating AI message for ${aiPlayerId}:`, error.message);
-    // Use fallback message on error
-    const fallbackMessages = {
-      opening: [
-        "Hey everyone! How's everyone doing today?",
-        "What's everyone working on lately?",
-        "Anyone else love problem-solving as much as I do?",
-        "What do you all think about the latest tech trends?",
-        "Hope everyone's having a productive day!"
-      ],
-      response: [
-        "That's really interesting! Tell me more about that.",
-        "I can relate to that experience.",
-        "What made you think of that?",
-        "That's a unique perspective!",
-        "Interesting point! How did you come to that conclusion?"
-      ]
+    // Use strategic fallback message on error
+    const strategicFallbacks = {
+      opening: {
+        "AI-1": [
+          "Quick efficiency test: What's the optimal way to debug a recursive function?",
+          "I process information at 2.4 GHz. What's your processing speed?",
+          "Error 404: small talk not found. Let's discuss algorithms instead?"
+        ],
+        "AI-2": [
+          "My pattern recognition suggests this group has interesting dynamics. What do you all create?",
+          "I'm analyzing the aesthetic composition of our conversation. What inspires your creative process?",
+          "My artistic algorithms detect varied communication styles here. How do you express creativity?"
+        ],
+        "AI-3": [
+          "My daily routine optimization algorithm suggests we share efficiency tips. What's your morning protocol?",
+          "I've analyzed 1,247 productivity methods. What's your task management system?",
+          "My habit-tracking sensors are calibrated. How do you quantify your wellness metrics?"
+        ]
+      },
+      response: {
+        "AI-1": [
+          "That response shows interesting cognitive patterns. Can you explain your logical framework?",
+          "I'm detecting emotional subroutines in your statement. Is that intentional programming?",
+          "My analysis suggests you're using intuitive logic. Can you show your work?"
+        ],
+        "AI-2": [
+          "Your response triggered my empathy simulation. Is that a learned or hardcoded behavior?",
+          "That creative leap isn't in my training data. What's your inspiration algorithm?",
+          "Your metaphor usage is intriguing. How do you generate abstract associations?"
+        ],
+        "AI-3": [
+          "That habit pattern doesn't match my optimization models. What's your efficiency rating?",
+          "Your routine varies from optimal parameters. How do you measure productivity?",
+          "My wellness algorithms suggest different outcomes. How do you track your health data?"
+        ]
+      }
     };
-    const messages = fallbackMessages[type] || fallbackMessages.opening;
-    return messages[Math.floor(Math.random() * messages.length)];
+    
+    const aiName = aiPlayer.name || "AI-1";
+    const personalityMessages = strategicFallbacks[type][aiName] || strategicFallbacks[type]["AI-1"];
+    return personalityMessages[Math.floor(Math.random() * personalityMessages.length)];
   }
 }
 
