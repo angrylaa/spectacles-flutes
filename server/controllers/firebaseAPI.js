@@ -152,6 +152,8 @@ export const respond = async () => {
 
       if (playerData.state !== "blocked") {
         const latestUnread = history.find((msg) => msg.unread === true);
+        await updateMessageReadStatus(latestUnread.messageId);
+
         const messageData = await respondToMessage(
           latestUnread.content,
           pair.sender,
@@ -162,6 +164,9 @@ export const respond = async () => {
         wait(5000);
         await postCreateMessage(messageData);
         await updateMessageReadStatus(latestUnread.messageId);
+        await updatePlayer(playerId, {
+          messageCount: playerData.messageCount + pairs.length,
+        });
 
         if (playerData.messageCount >= 20) {
           await updatePlayer(playerId, {

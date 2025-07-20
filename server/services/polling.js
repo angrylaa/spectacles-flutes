@@ -12,14 +12,8 @@ async function checkAndProcessResponses() {
     console.log(flagData);
 
     if (!flagData.respond) {
-      // Set flag to true before processing
-      await flagRef.update({ respond: true });
-
       // Run respond function
       await respond();
-
-      // Set flag back to false after completion
-      await flagRef.update({ respond: false });
     }
   } catch (error) {
     console.error("Error in response polling:", error);
