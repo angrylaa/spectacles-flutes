@@ -2,9 +2,9 @@ import express from "express";
 import {
   conversationPhase,
   getChatHistory,
-  initiateGame,
   respond,
   startGame,
+  votingPhase,
 } from "../controllers/firebaseAPI.js";
 import { deleteAllMessagesExceptOne } from "../services/messageService.js";
 
@@ -40,8 +40,6 @@ const gameStageTwo = {
 // 2. update number of players in game session
 // THEN trigger a webhook to notify the frontend & backend, to call the third api
 // router.post("/new-player-joins");
-
-router.post("/new-player-joins", initiateGame);
 // body: bio (string), gameId (string)
 
 // CONVO STAGE
@@ -68,6 +66,7 @@ router.post("/conversation-phase", conversationPhase);
 
 // third api response loop TODO: jasmine
 router.get("/respond-to-message", respond);
+router.post("/voting-phase", votingPhase);
 
 // VOTING STAGE
 const gameStageFour = {

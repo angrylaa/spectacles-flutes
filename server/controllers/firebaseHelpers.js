@@ -36,8 +36,8 @@ export async function createAIMessageAndIncrementCount(
 
   const playerData = playerSnap.data();
 
-  if (playerData.noMessagesSent >= 10) {
-    throw new Error(`Player ${senderId} has reached the message limit of 10.`);
+  if (playerData.noMessagesSent >= 20) {
+    throw new Error(`Player ${senderId} has reached the message limit of 20.`);
   }
 
   const messageId = uuidv4();

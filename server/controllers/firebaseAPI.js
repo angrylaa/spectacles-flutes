@@ -63,47 +63,15 @@ export async function startGame(req, res) {
 
     await db.collection("gameSessions").doc(gameId).set(gameSessionData);
 
+    await db.collection("gameSessions").doc(gameId).update({
+      gameStage: 1,
+    });
+
     res.send({ success: true, gameSession: gameSessionData });
   } catch (error) {
     res
       .status(500)
       .send({ error: "Failed to create a game session", details: error });
-  }
-}
-
-// second api called
-// 1. player joins & adds bio - create a player
-// 2. update number of players in game session
-// THEN trigger a webhook to notify the frontend & backend, to call the third api
-// router.post("/new-player-joins");
-export async function initiateGame(req, res) {
-  try {
-    const { gameId, bio } = req.body;
-
-    if (!gameId || !bio) {
-      return res.status(400).send({ error: "Game ID and bio are required" });
-    }
-
-    const playerId = await createPlayer(bio);
-
-    const gameRef = db.collection("gameSessions").doc(gameId);
-    const gameSnap = await gameRef.get();
-
-    if (!gameSnap.exists) {
-      return res.status(404).send({ error: "Game session not found" });
-    }
-
-    await gameRef.update({
-      noOfPlayers: (gameSnap.data().noOfPlayers || 0) + 1,
-      playersList: [...gameSnap.data().playersList, playerId],
-      gameStage: 1,
-    });
-
-    res.send({ success: true, playerId });
-  } catch (error) {
-    res
-      .status(500)
-      .send({ error: "Failed to create a 2nd player", details: error });
   }
 }
 
@@ -136,8 +104,11 @@ export const conversationPhase = async (req, res) => {
           const messageData = await sendMessage(otherPlayers, playerId);
 
           await postCreateMessage(messageData);
+          await updatePlayer(playerId, {
+            messageCount: playerData.messageCount + 1,
+          });
 
-          if (playerData.messageCount >= 10) {
+          if (playerData.messageCount >= 20) {
             await updatePlayer(playerId, {
               state: "blocked",
             });
@@ -192,7 +163,7 @@ export const respond = async () => {
         await postCreateMessage(messageData);
         await updateMessageReadStatus(latestUnread.messageId);
 
-        if (playerData.messageCount >= 10) {
+        if (playerData.messageCount >= 20) {
           await updatePlayer(playerId, {
             state: "blocked",
           });
@@ -209,3 +180,45 @@ export const respond = async () => {
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export const votingPhase = async () => {
+  const unreadMessages = await fetchUnreadMessages();
+
+  const pairs = unreadMessages.map((msg) => ({
+    sender: msg.senderId,
+    recipient: msg.recipientId,
+  }));
+
+  const chatHistories = await Promise.all(
+    pairs.map(async (pair) => {
+      const history = await fetchChatHistory(pair.sender, pair.recipient);
+      const playerData = await getPlayer(pair.recipient);
+      const playerId = playerData.playerId;
+      console.log(playerData);
+
+      if (playerData.state !== "blocked") {
+        const latestUnread = history.find((msg) => msg.unread === true);
+        const messageData = await respondToMessage(
+          latestUnread.content,
+          pair.sender,
+          pair.recipient,
+          history
+        );
+
+        wait(5000);
+        await postCreateMessage(messageData);
+        await updateMessageReadStatus(latestUnread.messageId);
+
+        if (playerData.messageCount >= 15) {
+          await updatePlayer(playerId, {
+            state: "blocked",
+          });
+        }
+      }
+
+      return true;
+    })
+  );
+
+  await setPollingFlag(true);
+};

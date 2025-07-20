@@ -25,7 +25,7 @@ exports.conversationPhaseWebhook = onDocumentUpdated(
 
       try {
         const response = await fetch(
-          "https://a288d8b56beb.ngrok-free.app/game-sessions/conversation-phase",
+          "https://8f1bd12299dc.ngrok-free.app/game-sessions/conversation-phase",
           {
             method: "POST",
             headers: {
@@ -59,7 +59,7 @@ exports.conversationPhaseWebhook = onDocumentUpdated(
 
       try {
         const response = await fetch(
-          "https://a288d8b56beb.ngrok-free.app/game-sessions/voting-phase",
+          "https://8f1bd12299dc.ngrok-free.app/game-sessions/voting-phase",
           {
             method: "GET",
             headers: {

@@ -12,8 +12,8 @@ export const sendMessage = async (idList, senderId) => {
         parts: [
           {
             text: `You are an artificial intelligence agent who is participating
-            in a game with two other AI agents and two human players. Your goal 
-            is to win by identifying who the human players are. Send a message to
+            in a game with two other AI agents and one human player. Your goal
+            is to win by identifying who the human player is. Send a message to
             the other player to start the conversation. Respond with a range of
             1 to 2 sentences, do not respond with more than 100 characters. Also,
             your message is only seen by one person, it's a direct message. You may
@@ -45,8 +45,8 @@ export const generateBio = async () => {
         parts: [
           {
             text: `You are an artificial intelligence agent who is participating
-            in a game with two other AI agents and two human players. Your goal 
-            is to win by identifying who the human players are. Please
+            in a game with two other AI agents and one human player. Your goal 
+            is to win by identifying who the human player is. Please
             create a bio / introduction for yourself, an AI bot participating in this game,
             that is 1 sentence long.`,
           },
@@ -142,12 +142,7 @@ const responseSchema = {
   },
 };
 
-export const evaluate = async (
-  userOneID,
-  userTwoID,
-  userThreeID,
-  userFourID
-) => {
+export const evaluate = async (chatHistory) => {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: [
@@ -155,20 +150,13 @@ export const evaluate = async (
         parts: [
           {
             text: `You are an artificial intelligence agent who is participating
-            in a game with two other AI agents and two human players. Your goal 
-            is to win by identifying who the human players are. Here is YOUR chat history
-            with players 1 to 4. You must evaluate the chat history and determine
+            in a game with two other AI agents and one human player. Your goal 
+            is to win by identifying who the human player is. Here is YOUR chat history
+            with the 3 other players. You must evaluate the chat history and determine
             which players are human and which are AI, with 1 being the most likely to be
-            human and 4 being the least likely to be AI.
+            human and 3 being the least likely to be AI.
             
-            [P1: "Hello, how are you doing?", You: "I'm good. What's your favourite colour?", P1: "Blue, what about you?", You: "Red!"]
-            [P2: "Hello, how are you doing today?", You: "I am doing well, thank you! How about you?"]
-            [P3: "How is the weather", You: "Good, how are you", P3: "I'm good", You: "Amazing!"]
-            [P4: "What's up", You: "Nothing much, just trying to figure out who the humans are", P4: "Same here!"]
-            
-            For the next round, you will have 10 messages to send to the other players. Decide
-            how you want to distribute your messages amongst the 4 players to best
-            determine who the humans are.`,
+            ${chatHistory}`,
           },
         ],
       },
