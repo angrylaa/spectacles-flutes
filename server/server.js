@@ -488,7 +488,17 @@ Be clever and strategic, not obviously interrogating.`;
       }
     };
     
-    const aiName = aiPlayer.name || "AI-1";
+    // Try to get AI name from game data, fallback to AI-1
+    let aiName = "AI-1";
+    try {
+      const game = games.get(gameId);
+      const aiPlayerData = game?.players.find(p => p.id === aiPlayerId);
+      aiName = aiPlayerData?.name || "AI-1";
+    } catch (e) {
+      // If we can't get the AI name, just use AI-1
+      aiName = "AI-1";
+    }
+    
     const personalityMessages = strategicFallbacks[type][aiName] || strategicFallbacks[type]["AI-1"];
     return personalityMessages[Math.floor(Math.random() * personalityMessages.length)];
   }
