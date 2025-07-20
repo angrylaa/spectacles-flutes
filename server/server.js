@@ -37,7 +37,7 @@ app.post("/api/games", async (req, res) => {
     const aiPlayers = [];
     for (let i = 1; i <= 3; i++) {
       const aiPlayerId = uuidv4();
-      const bio = await generateAIBio();
+      const bio = await generateAIBio(i);
       aiPlayers.push({
         id: aiPlayerId,
         name: `AI-${i}`,
@@ -199,30 +199,46 @@ app.post("/api/games/:gameId/vote", (req, res) => {
 });
 
 // Generate AI bio
-async function generateAIBio() {
+async function generateAIBio(playerNumber) {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
-    const prompt = `You are an AI participating in a game where you need to detect who the human is among 4 players (you + 2 other AIs + 1 human). Create a brief, natural-sounding bio that could believably be from either an AI or human. Keep it under 50 words and make it conversational. Examples: "Love hiking and coding in my spare time", "Obsessed with vintage vinyl and my cat Mr. Whiskers", "Data scientist by day, amateur chef by night".`;
+    const bioStyles = [
+      "Create a tech-focused bio about someone who loves programming, gadgets, or data science. Keep it under 40 words and casual.",
+      "Create a creative/artistic bio about someone into music, art, writing, or design. Keep it under 40 words and personal.",
+      "Create a lifestyle bio about someone who enjoys fitness, travel, cooking, or outdoor activities. Keep it under 40 words and friendly."
+    ];
+    
+    const prompt = `${bioStyles[playerNumber - 1]} Make it sound natural and human-like, not robotic. Add a unique random element or hobby. Just return the bio text, no quotes or explanations.`;
     
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text().trim().replace(/['"]/g, '');
   } catch (error) {
     console.error("Error generating AI bio:", error);
-    return `I enjoy learning new things and having interesting conversations!`;
+    const fallbackBios = [
+      "Full-stack developer by day, retro gaming enthusiast by night. Currently obsessed with mechanical keyboards.",
+      "Freelance graphic designer who collects vinyl records. Coffee addict and weekend rock climber.",
+      "Data analyst who bakes sourdough bread and practices yoga. Always planning my next hiking adventure."
+    ];
+    return fallbackBios[playerNumber - 1] || fallbackBios[0];
   }
 }
 
 // Start AI conversations
 async function startAIConversations(gameId) {
   const game = games.get(gameId);
-  if (!game) return;
+  if (!game) {
+    console.log(`❌ Game ${gameId} not found for AI conversations`);
+    return;
+  }
 
   const aiPlayers = game.players.filter(p => p.isAI);
+  console.log(`🤖 Starting AI conversations for game ${gameId} with ${aiPlayers.length} AI players`);
   
   for (const aiPlayer of aiPlayers) {
     setTimeout(async () => {
+      console.log(`💬 ${aiPlayer.name} generating opening message...`);
       const message = await generateAIMessage(gameId, aiPlayer.id, "opening");
       if (message) {
         const gameMessages = messages.get(gameId) || [];
@@ -235,6 +251,9 @@ async function startAIConversations(gameId) {
           isAI: true
         });
         messages.set(gameId, gameMessages);
+        console.log(`✅ ${aiPlayer.name} sent: "${message}"`);
+      } else {
+        console.log(`❌ ${aiPlayer.name} failed to generate message`);
       }
     }, Math.random() * 5000); // Random delay 0-5 seconds
   }
@@ -243,16 +262,21 @@ async function startAIConversations(gameId) {
 // Generate AI responses
 async function generateAIResponses(gameId, humanMessage) {
   const game = games.get(gameId);
-  if (!game || game.gameEnded) return;
+  if (!game || game.gameEnded) {
+    console.log(`⚠️ Skipping AI responses - game ${gameId} not found or ended`);
+    return;
+  }
 
   const aiPlayers = game.players.filter(p => p.isAI);
   const gameMessages = messages.get(gameId) || [];
   
   // Randomly select 1-2 AIs to respond
   const respondingAIs = aiPlayers.sort(() => 0.5 - Math.random()).slice(0, Math.random() > 0.5 ? 2 : 1);
+  console.log(`🤖 ${respondingAIs.length} AIs will respond to human message: "${humanMessage.content}"`);
   
   for (const aiPlayer of respondingAIs) {
     setTimeout(async () => {
+      console.log(`💬 ${aiPlayer.name} generating response...`);
       const response = await generateAIMessage(gameId, aiPlayer.id, "response", humanMessage);
       if (response) {
         const aiMessage = {
@@ -267,6 +291,9 @@ async function generateAIResponses(gameId, humanMessage) {
         const currentMessages = messages.get(gameId) || [];
         currentMessages.push(aiMessage);
         messages.set(gameId, currentMessages);
+        console.log(`✅ ${aiPlayer.name} responded: "${response}"`);
+      } else {
+        console.log(`❌ ${aiPlayer.name} failed to generate response`);
       }
     }, 2000 + Math.random() * 4000); // Random delay 2-6 seconds
   }
@@ -278,6 +305,31 @@ async function generateAIMessage(gameId, aiPlayerId, type, contextMessage = null
     const game = games.get(gameId);
     const gameMessages = messages.get(gameId) || [];
     const aiPlayer = game.players.find(p => p.id === aiPlayerId);
+    
+    // Fallback messages if AI generation fails
+    const fallbackMessages = {
+      opening: [
+        "Hey everyone! How's everyone doing today?",
+        "What's everyone working on lately?",
+        "Anyone else love problem-solving as much as I do?",
+        "What do you all think about the latest tech trends?",
+        "Hope everyone's having a productive day!"
+      ],
+      response: [
+        "That's really interesting! Tell me more about that.",
+        "I can relate to that experience.",
+        "What made you think of that?",
+        "That's a unique perspective!",
+        "Interesting point! How did you come to that conclusion?"
+      ]
+    };
+    
+    // Check if Gemini API key is properly set
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
+      console.log(`⚠️ Using fallback message for ${aiPlayer.name} - Gemini API key not set`);
+      const messages = fallbackMessages[type] || fallbackMessages.opening;
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
     
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     
@@ -292,10 +344,36 @@ async function generateAIMessage(gameId, aiPlayerId, type, contextMessage = null
     
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    return response.text().trim().replace(/['"]/g, '');
+    const text = response.text().trim().replace(/['"]/g, '');
+    
+    if (!text || text.length === 0) {
+      console.log(`⚠️ Empty response from Gemini for ${aiPlayer.name}, using fallback`);
+      const messages = fallbackMessages[type] || fallbackMessages.opening;
+      return messages[Math.floor(Math.random() * messages.length)];
+    }
+    
+    return text;
   } catch (error) {
-    console.error("Error generating AI message:", error);
-    return null;
+    console.error(`❌ Error generating AI message for ${aiPlayerId}:`, error.message);
+    // Use fallback message on error
+    const fallbackMessages = {
+      opening: [
+        "Hey everyone! How's everyone doing today?",
+        "What's everyone working on lately?",
+        "Anyone else love problem-solving as much as I do?",
+        "What do you all think about the latest tech trends?",
+        "Hope everyone's having a productive day!"
+      ],
+      response: [
+        "That's really interesting! Tell me more about that.",
+        "I can relate to that experience.",
+        "What made you think of that?",
+        "That's a unique perspective!",
+        "Interesting point! How did you come to that conclusion?"
+      ]
+    };
+    const messages = fallbackMessages[type] || fallbackMessages.opening;
+    return messages[Math.floor(Math.random() * messages.length)];
   }
 }
 

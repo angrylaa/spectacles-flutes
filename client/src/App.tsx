@@ -34,6 +34,19 @@ export interface Message {
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
+// Add request logging
+const apiCall = async (url: string, options?: RequestInit) => {
+  console.log(`🌐 API Call: ${options?.method || 'GET'} ${url}`);
+  try {
+    const response = await fetch(url, options);
+    console.log(`✅ API Response: ${response.status} ${response.statusText}`);
+    return response;
+  } catch (error) {
+    console.error(`❌ API Error:`, error);
+    throw error;
+  }
+};
+
 function App() {
   const [currentScreen, setCurrentScreen] = useState<'start' | 'lobby' | 'chat' | 'voting' | 'results'>('start');
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -47,7 +60,7 @@ function App() {
     setError(null);
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/games`, {
+      const response = await apiCall(`${API_BASE_URL}/api/games`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,7 +95,7 @@ function App() {
     
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/games/${gameState.id}/start-chat`, {
+      const response = await apiCall(`${API_BASE_URL}/api/games/${gameState.id}/start-chat`, {
         method: 'POST',
       });
 
@@ -107,7 +120,7 @@ function App() {
     if (!gameState) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/games/${gameState.id}/messages`, {
+      const response = await apiCall(`${API_BASE_URL}/api/games/${gameState.id}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,7 +157,7 @@ function App() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/games/${gameState.id}`);
+        const response = await apiCall(`${API_BASE_URL}/api/games/${gameState.id}`);
         if (response.ok) {
           const data = await response.json();
           setMessages(data.messages || []);

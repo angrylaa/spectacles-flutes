@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { GameState } from '../App';
 
 interface ResultsScreenProps {
@@ -12,9 +12,13 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ gameState, onPlayAgain })
   // const humanPlayer = gameState.players.find(p => p.id === gameState.humanPlayerId);
   // const aiPlayers = gameState.players.filter(p => p.isAI);
   
-  // Simulate AI voting results - randomly determine if human was detected
-  const humanDetected = Math.random() < 0.6; // 60% chance AIs detect human
-  const humanWon = !humanDetected;
+  // Simulate AI voting results - randomly determine if human was detected (memoized to prevent flashing)
+  const gameResult = useMemo(() => {
+    const humanDetected = Math.random() < 0.6; // 60% chance AIs detect human
+    return !humanDetected;
+  }, [gameState.id]); // Only recalculate when game changes
+  
+  const humanWon = gameResult;
 
   const getResultMessage = () => {
     if (humanWon) {
