@@ -13,6 +13,16 @@ export interface Player {
   isAI: boolean;
 }
 
+export interface VotingResult {
+  aiId: string;
+  aiName: string;
+  suspectedHumanId: string;
+  suspectedHumanName: string;
+  reasoning: string;
+  confidence: number;
+  timestamp: Date;
+}
+
 export interface GameState {
   id: string;
   players: Player[];
@@ -21,6 +31,7 @@ export interface GameState {
   chatStarted: boolean;
   gameEnded: boolean;
   votes?: Map<string, string>;
+  votingResults?: VotingResult[];
 }
 
 export interface Message {
@@ -51,6 +62,7 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState<'start' | 'lobby' | 'chat' | 'voting' | 'results'>('start');
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [votingResults, setVotingResults] = useState<VotingResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,10 +154,26 @@ function App() {
   };
 
   // Start voting phase
-  const startVoting = () => {
+  const startVoting = async () => {
     if (!gameState) return;
-    setGameState(prev => prev ? { ...prev, gamePhase: 'voting' } : null);
-    setCurrentScreen('voting');
+    
+    try {
+      const response = await apiCall(`${API_BASE_URL}/api/games/${gameState.id}/start-voting`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start voting');
+      }
+
+      setGameState(prev => prev ? { ...prev, gamePhase: 'voting' } : null);
+      setCurrentScreen('voting');
+      
+      // Start polling for voting results
+      startVotingPolling();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start voting');
+    }
   };
 
   // Poll for messages
@@ -176,6 +204,36 @@ function App() {
 
     // Clean up interval after 10 minutes
     setTimeout(() => clearInterval(pollInterval), 600000);
+  };
+
+  // Poll for voting results
+  const startVotingPolling = () => {
+    const pollInterval = setInterval(async () => {
+      if (!gameState) {
+        clearInterval(pollInterval);
+        return;
+      }
+
+      try {
+        const response = await apiCall(`${API_BASE_URL}/api/games/${gameState.id}/voting-results`);
+        if (response.ok) {
+          const data = await response.json();
+          setVotingResults(data.votingResults || []);
+          
+          // Check if voting is complete
+          if (data.votingComplete && currentScreen !== 'results') {
+            setGameState(prev => prev ? { ...prev, gameEnded: true, gamePhase: 'results' } : null);
+            setCurrentScreen('results');
+            clearInterval(pollInterval);
+          }
+        }
+      } catch (err) {
+        console.error('Error polling voting results:', err);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    // Clean up interval after 5 minutes
+    setTimeout(() => clearInterval(pollInterval), 300000);
   };
 
   // Clear error after 5 seconds
@@ -221,6 +279,7 @@ function App() {
       {currentScreen === 'voting' && gameState && (
         <VotingScreen 
           gameState={gameState}
+          votingResults={votingResults}
           onVoteComplete={() => setCurrentScreen('results')}
         />
       )}
@@ -228,9 +287,11 @@ function App() {
       {currentScreen === 'results' && gameState && (
         <ResultsScreen 
           gameState={gameState}
+          votingResults={votingResults}
           onPlayAgain={() => {
             setGameState(null);
             setMessages([]);
+            setVotingResults([]);
             setCurrentScreen('start');
           }}
         />

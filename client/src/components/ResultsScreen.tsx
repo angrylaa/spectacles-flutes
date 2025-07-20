@@ -1,36 +1,49 @@
 import React, { useMemo } from 'react';
-import { GameState } from '../App';
+import { GameState, VotingResult } from '../App';
 
 interface ResultsScreenProps {
   gameState: GameState;
+  votingResults: VotingResult[];
   onPlayAgain: () => void;
 }
 
-const ResultsScreen: React.FC<ResultsScreenProps> = ({ gameState, onPlayAgain }) => {
-  // Simulate game results (in a real implementation, this would come from the backend)
-  // const aiVotes = gameState.votes || new Map();
-  // const humanPlayer = gameState.players.find(p => p.id === gameState.humanPlayerId);
-  // const aiPlayers = gameState.players.filter(p => p.isAI);
+const ResultsScreen: React.FC<ResultsScreenProps> = ({ gameState, votingResults, onPlayAgain }) => {
+  const humanPlayer = gameState.players.find(p => !p.isAI);
   
-  // Simulate AI voting results - randomly determine if human was detected (memoized to prevent flashing)
+  // Calculate game results based on actual AI votes
   const gameResult = useMemo(() => {
-    const humanDetected = Math.random() < 0.6; // 60% chance AIs detect human
-    return !humanDetected;
-  }, [gameState.id]); // Only recalculate when game changes
+    if (!votingResults.length) return { won: false, correctVotes: 0, totalVotes: 0 };
+    
+    const correctVotes = votingResults.filter(vote => 
+      vote.suspectedHumanId === gameState.humanPlayerId
+    ).length;
+    
+    const totalVotes = votingResults.length;
+    
+    // Human wins if majority of AIs voted for someone else
+    const humanWon = correctVotes < (totalVotes / 2);
+    
+    return { 
+      won: humanWon, 
+      correctVotes, 
+      totalVotes,
+      detectionRate: Math.round((correctVotes / totalVotes) * 100)
+    };
+  }, [votingResults, gameState.humanPlayerId]);
   
-  const humanWon = gameResult;
+  const { won: humanWon, correctVotes, totalVotes, detectionRate } = gameResult;
 
   const getResultMessage = () => {
     if (humanWon) {
       return {
         title: "🎉 Victory!",
-        message: "Congratulations! You successfully fooled the AIs and won the game!",
+        message: `Congratulations! Only ${correctVotes} out of ${totalVotes} AIs correctly identified you as human (${detectionRate}% detection rate). You successfully blended in!`,
         className: "won"
       };
     } else {
       return {
         title: "😅 Detected!",
-        message: "The AIs identified you as the human. Better luck next time!",
+        message: `${correctVotes} out of ${totalVotes} AIs correctly identified you as human (${detectionRate}% detection rate). The algorithms saw through your disguise!`,
         className: "lost"
       };
     }
@@ -65,27 +78,60 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ gameState, onPlayAgain })
         </div>
 
         <div style={{ marginTop: '2rem' }}>
-          <h3>Game Analysis</h3>
+          <h3>AI Analysis Breakdown</h3>
+          <div className="voting-analysis" style={{ margin: '1rem 0' }}>
+            {votingResults.map((vote, index) => (
+              <div key={vote.aiId} style={{
+                background: vote.suspectedHumanId === gameState.humanPlayerId 
+                  ? 'rgba(231, 76, 60, 0.1)' 
+                  : 'rgba(46, 204, 113, 0.1)',
+                border: `1px solid ${vote.suspectedHumanId === gameState.humanPlayerId ? '#e74c3c' : '#2ecc71'}`,
+                borderRadius: '10px',
+                padding: '1rem',
+                marginBottom: '1rem',
+                textAlign: 'left'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <h4 style={{ color: '#667eea' }}>{vote.aiName}</h4>
+                  <span style={{ 
+                    color: vote.suspectedHumanId === gameState.humanPlayerId ? '#e74c3c' : '#2ecc71',
+                    fontWeight: 'bold'
+                  }}>
+                    {vote.suspectedHumanId === gameState.humanPlayerId ? '🎯 CORRECT' : '❌ INCORRECT'}
+                  </span>
+                </div>
+                <p style={{ marginBottom: '0.5rem' }}>
+                  <strong>Suspected:</strong> {vote.suspectedHumanName} ({vote.confidence}% confidence)
+                </p>
+                <p style={{ fontStyle: 'italic', color: '#b0b3c7' }}>
+                  "{vote.reasoning}"
+                </p>
+              </div>
+            ))}
+          </div>
+          
           <div style={{ 
             background: 'rgba(255, 255, 255, 0.05)', 
             padding: '1rem', 
             borderRadius: '10px',
-            margin: '1rem 0',
             textAlign: 'left'
           }}>
-            {humanWon ? (
-              <ul>
-                <li>✅ Your responses seemed AI-like enough to fool the algorithms</li>
-                <li>✅ You successfully blended in with the conversation flow</li>
-                <li>✅ The AIs couldn't detect human-specific patterns in your messages</li>
-              </ul>
-            ) : (
-              <ul>
-                <li>❌ The AIs detected human-like patterns in your responses</li>
-                <li>❌ Your conversation style may have seemed too emotional or personal</li>
-                <li>❌ Try to be more systematic and less spontaneous next time</li>
-              </ul>
-            )}
+            <h4>Performance Summary:</h4>
+            <ul style={{ marginTop: '0.5rem' }}>
+              {humanWon ? (
+                <>
+                  <li>✅ Your deception was successful - most AIs were fooled</li>
+                  <li>✅ You maintained an AI-like communication pattern</li>
+                  <li>✅ Your responses didn't trigger enough human detection algorithms</li>
+                </>
+              ) : (
+                <>
+                  <li>❌ The majority of AIs saw through your human disguise</li>
+                  <li>❌ Your responses showed detectable human behavioral patterns</li>
+                  <li>💡 Try being more systematic and less emotionally expressive next time</li>
+                </>
+              )}
+            </ul>
           </div>
         </div>
 

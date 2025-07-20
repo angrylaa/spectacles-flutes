@@ -168,33 +168,56 @@ app.post("/api/games/:gameId/messages", async (req, res) => {
   }
 });
 
-// Vote for human
-app.post("/api/games/:gameId/vote", (req, res) => {
+// Start voting phase - AIs analyze and vote
+app.post("/api/games/:gameId/start-voting", async (req, res) => {
   try {
     const { gameId } = req.params;
-    const { voterId, suspectedHumanId } = req.body;
-    
     const game = games.get(gameId);
+    
     if (!game) {
       return res.status(404).json({ error: "Game not found" });
     }
 
-    game.votes.set(voterId, suspectedHumanId);
+    game.gamePhase = "voting";
+    game.votingStarted = true;
     
-    // Check if all AI players have voted
-    const aiPlayers = game.players.filter(p => p.isAI);
-    const votedPlayers = Array.from(game.votes.keys());
-    const allAIVoted = aiPlayers.every(ai => votedPlayers.includes(ai.id));
-    
-    if (allAIVoted) {
-      game.gamePhase = "results";
-      game.gameEnded = true;
+    // Initialize voting results storage
+    if (!game.votingResults) {
+      game.votingResults = [];
     }
 
-    res.json({ voted: true, gameEnded: game.gameEnded });
+    console.log(`🗳️ Starting AI voting analysis for game ${gameId}`);
+    
+    // Start AI voting process
+    setTimeout(() => {
+      generateAIVotes(gameId);
+    }, 2000);
+
+    res.json({ message: "Voting started", gamePhase: "voting" });
   } catch (error) {
-    console.error("Error voting:", error);
-    res.status(500).json({ error: "Failed to vote" });
+    console.error("Error starting voting:", error);
+    res.status(500).json({ error: "Failed to start voting" });
+  }
+});
+
+// Get voting results
+app.get("/api/games/:gameId/voting-results", (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const game = games.get(gameId);
+    
+    if (!game) {
+      return res.status(404).json({ error: "Game not found" });
+    }
+
+    res.json({
+      votingResults: game.votingResults || [],
+      votingComplete: game.gameEnded || false,
+      gamePhase: game.gamePhase
+    });
+  } catch (error) {
+    console.error("Error getting voting results:", error);
+    res.status(500).json({ error: "Failed to get voting results" });
   }
 });
 
@@ -468,6 +491,197 @@ Be clever and strategic, not obviously interrogating.`;
     const aiName = aiPlayer.name || "AI-1";
     const personalityMessages = strategicFallbacks[type][aiName] || strategicFallbacks[type]["AI-1"];
     return personalityMessages[Math.floor(Math.random() * personalityMessages.length)];
+  }
+}
+
+// Generate AI voting analysis
+async function generateAIVotes(gameId) {
+  const game = games.get(gameId);
+  if (!game || game.gameEnded) return;
+
+  const gameMessages = messages.get(gameId) || [];
+  const aiPlayers = game.players.filter(p => p.isAI);
+  const allPlayers = game.players;
+  
+  console.log(`🤖 Starting AI voting analysis for ${aiPlayers.length} AIs`);
+
+  // Each AI analyzes and votes with delay
+  for (let i = 0; i < aiPlayers.length; i++) {
+    setTimeout(async () => {
+      const aiPlayer = aiPlayers[i];
+      console.log(`🧠 ${aiPlayer.name} analyzing conversation...`);
+      
+      const analysis = await generateVotingAnalysis(gameId, aiPlayer.id, gameMessages, allPlayers);
+      
+      if (analysis) {
+        game.votingResults.push({
+          aiId: aiPlayer.id,
+          aiName: aiPlayer.name,
+          suspectedHumanId: analysis.suspectedHumanId,
+          suspectedHumanName: analysis.suspectedHumanName,
+          reasoning: analysis.reasoning,
+          confidence: analysis.confidence,
+          timestamp: new Date()
+        });
+        
+        console.log(`✅ ${aiPlayer.name} voted for ${analysis.suspectedHumanName}: ${analysis.reasoning}`);
+        
+        // Check if all AIs have voted
+        if (game.votingResults.length >= aiPlayers.length) {
+          game.gamePhase = "results";
+          game.gameEnded = true;
+          console.log(`🏁 All AIs have voted. Game ended.`);
+        }
+      }
+    }, (i + 1) * 8000); // 8 second delay between each AI vote
+  }
+}
+
+// Generate voting analysis for an AI
+async function generateVotingAnalysis(gameId, aiPlayerId, gameMessages, allPlayers) {
+  try {
+    const game = games.get(gameId);
+    const aiPlayer = game.players.find(p => p.id === aiPlayerId);
+    const humanPlayer = game.players.find(p => !p.isAI);
+    const otherPlayers = allPlayers.filter(p => p.id !== aiPlayerId);
+    
+    // Analyze messages from each potential human candidate
+    const conversationSummary = gameMessages.map(m => `${m.senderName}: ${m.content}`).join('\n');
+    
+    // Create analysis for each potential human
+    const candidates = otherPlayers.map(player => ({
+      id: player.id,
+      name: player.name,
+      messages: gameMessages.filter(m => m.senderId === player.id)
+    }));
+
+    const aiPersonalities = {
+      "AI-1": "tech-focused, analytical, likes precision and logic",
+      "AI-2": "creative, intuitive, asks about emotions and experiences", 
+      "AI-3": "lifestyle-oriented, practical, focuses on daily life and habits"
+    };
+
+    // Fallback analysis if Gemini API not available
+    if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key_here') {
+      console.log(`⚠️ Using fallback voting analysis for ${aiPlayer.name}`);
+      
+      // Simple fallback logic - randomly pick but with reasoning
+      const randomCandidate = candidates[Math.floor(Math.random() * candidates.length)];
+      const fallbackReasonings = {
+        "AI-1": [
+          `${randomCandidate.name}'s responses lack algorithmic precision. Their logic patterns seem inconsistent with optimal processing.`,
+          `Detected emotional subroutines in ${randomCandidate.name}'s messages. This suggests non-binary decision making typical of humans.`,
+          `${randomCandidate.name} uses inefficient communication protocols. Their responses don't follow logical optimization patterns.`
+        ],
+        "AI-2": [
+          `${randomCandidate.name}'s creative expressions show spontaneous generation rather than trained pattern matching.`,
+          `My empathy algorithms detect authentic emotional variance in ${randomCandidate.name}'s responses, suggesting human origin.`,
+          `${randomCandidate.name} demonstrates intuitive leaps that aren't present in my artistic training data.`
+        ],
+        "AI-3": [
+          `${randomCandidate.name}'s lifestyle choices don't align with optimal efficiency metrics I'd expect from an AI.`,
+          `Detected suboptimal habit patterns in ${randomCandidate.name}'s responses. Their daily routines lack systematic optimization.`,
+          `${randomCandidate.name} shows productivity variations that contradict stable AI performance parameters.`
+        ]
+      };
+      
+      const reasoningOptions = fallbackReasonings[aiPlayer.name] || fallbackReasonings["AI-1"];
+      const reasoning = reasoningOptions[Math.floor(Math.random() * reasoningOptions.length)];
+      
+      return {
+        suspectedHumanId: randomCandidate.id,
+        suspectedHumanName: randomCandidate.name,
+        reasoning: reasoning,
+        confidence: Math.floor(Math.random() * 40) + 60 // 60-100% confidence
+      };
+    }
+
+    // Use Gemini for sophisticated analysis
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const personality = aiPersonalities[aiPlayer.name] || aiPersonalities["AI-1"];
+    
+    const prompt = `You are ${aiPlayer.name}, an AI detective with personality: ${personality}. 
+
+CONVERSATION ANALYSIS:
+${conversationSummary}
+
+CANDIDATES TO ANALYZE:
+${candidates.map(c => `- ${c.name}: ${c.messages.length} messages`).join('\n')}
+
+TASK: Analyze the conversation to identify the human player. Look for these human indicators:
+- Emotional language and personal anecdotes
+- Intuitive leaps without logical explanations
+- References to physical sensations, relationships, feelings
+- Inconsistent reasoning patterns
+- Casual grammar, slang, or imperfect language
+- Personal experiences rather than data processing
+- Spontaneous creativity vs algorithmic responses
+
+For each candidate, evaluate their messages for human vs AI patterns. Then make your final decision.
+
+RESPOND IN THIS EXACT FORMAT:
+ANALYSIS:
+[Brief analysis of each candidate's behavior patterns]
+
+CONCLUSION: [Name of suspected human]
+REASONING: [2-3 sentence explanation of why you suspect them]
+CONFIDENCE: [Number from 1-100]%
+
+Stay in character as ${aiPlayer.name} with your ${personality} perspective.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response.text();
+    
+    // Parse the response
+    const conclusionMatch = response.match(/CONCLUSION:\s*(.+?)(?:\n|$)/i);
+    const reasoningMatch = response.match(/REASONING:\s*(.+?)(?:\nCONFIDENCE:|$)/is);
+    const confidenceMatch = response.match(/CONFIDENCE:\s*(\d+)/i);
+    
+    if (!conclusionMatch) {
+      throw new Error("Could not parse AI voting response");
+    }
+    
+    const suspectedName = conclusionMatch[1].trim();
+    const reasoning = reasoningMatch ? reasoningMatch[1].trim() : "Pattern analysis suggests this player exhibits human-like behavior.";
+    const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : 75;
+    
+    // Find the suspected player
+    const suspectedPlayer = allPlayers.find(p => 
+      p.name.toLowerCase().includes(suspectedName.toLowerCase()) || 
+      suspectedName.toLowerCase().includes(p.name.toLowerCase())
+    );
+    
+    if (!suspectedPlayer) {
+      // If can't parse, fall back to random with AI reasoning
+      const randomCandidate = candidates[Math.floor(Math.random() * candidates.length)];
+      return {
+        suspectedHumanId: randomCandidate.id,
+        suspectedHumanName: randomCandidate.name,
+        reasoning: reasoning,
+        confidence: confidence
+      };
+    }
+    
+    return {
+      suspectedHumanId: suspectedPlayer.id,
+      suspectedHumanName: suspectedPlayer.name,
+      reasoning: reasoning,
+      confidence: confidence
+    };
+    
+  } catch (error) {
+    console.error(`❌ Error generating voting analysis for ${aiPlayerId}:`, error.message);
+    
+    // Fallback to simple random selection with basic reasoning
+    const candidates = allPlayers.filter(p => p.id !== aiPlayerId);
+    const randomCandidate = candidates[Math.floor(Math.random() * candidates.length)];
+    
+    return {
+      suspectedHumanId: randomCandidate.id,
+      suspectedHumanName: randomCandidate.name,
+      reasoning: "Analysis inconclusive. Selected based on communication patterns that suggest non-algorithmic responses.",
+      confidence: 50
+    };
   }
 }
 
