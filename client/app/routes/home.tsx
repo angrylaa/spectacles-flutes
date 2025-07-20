@@ -1,5 +1,9 @@
 import type { Route } from "./+types/home";
-import { Welcome } from "../welcome/welcome";
+import { Welcome } from "../pages/welcome/welcome";
+
+import { useState } from "react";
+import { LandingPage } from "../pages/LandingPage"; // Adjust path as needed
+
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +13,19 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return <Welcome />;
+  const [showLandingPage, setShowLandingPage] = useState(true);
+  console.log("showLandingPage:", showLandingPage); // should toggle when button is clicked
+
+  return showLandingPage ? (
+    <LandingPage onStart={() => setShowLandingPage(false)} />
+  ) : (
+    <Welcome />
+  );
 }
+
+// import Sidebar from "../components/ui/Sidebar";
+
+// export default function sidebar() {
+//   return <Sidebar />;
+// }
+

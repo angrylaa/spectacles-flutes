@@ -1,0 +1,83 @@
+/* Layout */
+.sidebar-container {
+  display: flex;
+  min-height: 100vh;
+  color: #f0f0f0;            /* light text for contrast */
+  font-family: sans-serif;
+}
+
+/* Sidebar styling */
+.sidebar {
+  width: 250px;
+  background-color: #223A61; /* Sidebar color */
+  color: white;
+  padding: 20px;
+  height: 100vh;
+}
+
+/* Sidebar header */
+.sidebar h2 {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+/* Navigation links */
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+
+/* Hover effect */
+.sidebar-button:hover {
+   background-color: #3f5270; /* slightly darker on hover */
+}
+
+/* Active tab */
+.sidebar-button.active {
+   background-color: #3f5270; /* even darker when selected */
+}
+
+/* Gradient background for main content */
+.main-content {
+  flex: 1;
+  padding: 30px;
+  background: linear-gradient(to bottom, #010D29, #072E69);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  color: white;
+}
+
+
+
+/* side bar button */
+
+.sidebar-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  border: none;
+  background-color: #4E6281;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.sidebar-button:hover,
+.sidebar-button.active {
+  background-color: #3a3a3a;
+}
+
+.tab-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+
