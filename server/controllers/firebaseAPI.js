@@ -2,6 +2,9 @@ import { v4 as uuidv4 } from "uuid";
 import { db } from "../firebaseAdmin.js";
 import { getSession } from "../services/gameSessionService.js";
 import { respondToMessage, sendMessage } from "../services/geminiService.js";
+import { getDocs, collection } from 'firebase/firestore';
+import { db } from './firebaseConfig.js';
+
 import {
   fetchChatHistory,
   fetchUnreadMessages,
@@ -36,6 +39,7 @@ export async function getChatHistory(req, res) {
 // 3. return the game url
 
 export async function startGame(req, res) {
+  console.log('yolo');
   try {
     const playerIdList = [];
 
@@ -221,4 +225,15 @@ export const votingPhase = async () => {
   );
 
   await setPollingFlag(true);
+};
+
+
+
+export const getAllPlayers = async () => {
+  const snapshot = await getDocs(collection(db, 'players'));
+  return snapshot.docs.map(doc => ({
+    ...doc.data(),
+    playerId: doc.id,  // or use the field inside doc.data() if different
+    updatedAt: doc.data().updatedAt || new Date().toISOString() // fallback if needed
+  }));
 };
