@@ -10,11 +10,17 @@
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #010D29, #072E69), 
+              radial-gradient(circle at center, #010D29, #072E69);
+  background-blend-mode: overlay;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  color: white;
+  font-family: sans-serif;
 
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
-  }
 }
 
 @theme inline {
