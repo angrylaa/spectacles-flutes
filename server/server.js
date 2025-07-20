@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import cors from "cors";  
 // import chatPhaseRoute from "./routes/chatPhase.js";
 import gameSessionRoute from "./routes/gameSessionRoute.js";
 // import messageRoute from "./routes/messageRoute.js";
@@ -12,6 +13,7 @@ checkAndProcessResponses();
 const port = 3000;
 const app = express();
 app.use(express.json());
+app.use(cors()); 
 
 app.use("/health", (req, res) => {
   console.log("Health check received");
